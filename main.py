@@ -120,8 +120,53 @@ def get_hourly_focast_raining_pictures(startTime: str, endTime: str) -> dict:
         字典，每一项key为日期字符串，value为小时级预报降雨色斑图地址。
     规则：
         如果用户输入的起始时间早于系统时间，则发布时间为用户输入的起始时间，key从用户输入的起始时间到结束时间，value为"起始时间_预报时间.png"。
-        如果用户输入的起始时间等于或晚于系统时间，则发布时间为系统时间减一小时，key从系统时间到用户输入的结束时间，value为"系统时间_预报时间.png"。
+        如果用户输入的起始时间等于或晚于系统时间，则发布时间为系统时间减一小时，key从系统时间减一小时到用户输入的结束时间，value为"系统时间_预报时间.png"。
     """
+    import re
+    from datetime import datetime, timedelta
+
+    def parse_datetime(datetime_str):
+        datetime_str = datetime_str.strip()
+        # 支持 YYYY-MM-DD HH:MM:SS 格式
+        if not re.match(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$', datetime_str):
+            raise ValueError(f"日期时间格式错误，请严格按照YYYY-MM-DD HH:MM:SS格式输入，如2025-07-15 08:00:00，当前输入: {datetime_str}")
+        return datetime_str
+
+    def daterange(start_datetime, end_datetime):
+        current = start_datetime
+        while current <= end_datetime:
+            yield current
+            current += timedelta(hours=1)
+
+    now = datetime.now()
+    
+    # 解析开始和结束时间
+    user_start = datetime.strptime(parse_datetime(startTime), "%Y-%m-%d %H:%M:%S")
+    user_end = datetime.strptime(parse_datetime(endTime), "%Y-%m-%d %H:%M:%S")
+
+    if user_start > user_end:
+        raise ValueError("开始时间不能晚于结束时间")
+
+    if user_start < now:
+        publish_time = user_start
+        key_start = user_start
+    else:
+        publish_time = now - timedelta(hours=1)
+        key_start = now
+
+    result = {}
+    for d in daterange(key_start, user_end):
+        if d == publish_time:
+            continue  # 跳过第一项
+        pub_str = publish_time.strftime("%Y%m%d%H%M%S")
+        forecast_str = d.strftime("%Y%m%d%H%M%S")
+        # key值减一小时
+        key_datetime = d - timedelta(hours=1)
+        if user_start >= now:
+            # 如果用户输入的起始时间等于或晚于系统时间，key值的时间部分全部置为0
+            key_datetime = key_datetime.replace(minute=0, second=0)
+        result[key_datetime.strftime("%Y-%m-%d %H:%M:%S")] = f"http://10.163.25.156:8502/hsimg/img/1500/{pub_str}_{forecast_str}.png"
+    return result
 
 
 if __name__ == "__main__":
