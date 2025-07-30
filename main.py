@@ -103,7 +103,9 @@ def get_focast_raining_pictures(startTime: str, endTime: str) -> dict:
             continue  # 跳过第一项
         pub_str = publish_date.strftime("%Y%m%d080000")
         forecast_str = d.strftime("%Y%m%d080000")
-        result[d.strftime("%Y-%m-%d")] = f"http://10.163.25.156:8502/hsimg/img/1381/{pub_str}_{forecast_str}.png"
+        # key值减一天
+        key_date = d - timedelta(days=1)
+        result[key_date.strftime("%Y-%m-%d")] = f"http://10.163.25.156:8502/hsimg/img/1381/{pub_str}_{forecast_str}.png"
     return result
 
 # MCP工具11：获取小时级预报降雨色斑图
