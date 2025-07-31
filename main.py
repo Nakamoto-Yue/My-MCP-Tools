@@ -111,7 +111,7 @@ def get_actual_raining_pictures(startTime: str, endTime: str) -> dict:
 
 # MCP工具11：获取小时级预报降雨色斑图
 @mcp.tool()
-def get_hourly_forecast_raining_pictures(startTime: str, endTime: str) -> dict:
+def get_hourly_forecast_pictures(startTime: str, endTime: str) -> dict:
     """
     获取小时级预报降雨色斑图地址。
     参数：
@@ -153,7 +153,7 @@ def get_hourly_forecast_raining_pictures(startTime: str, endTime: str) -> dict:
         key_start = user_start
     else:
         publish_time = now - timedelta(hours=1)
-        key_start = now
+        key_start = now - timedelta(hours=1)
 
     result = {}
     for d in daterange(key_start, user_end):
