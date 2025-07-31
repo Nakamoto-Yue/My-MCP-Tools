@@ -52,9 +52,10 @@ def get_actual_raining_pictures(startTime: str, endTime: str) -> dict:
         
     return result
 
+
 # MCP工具9：获取预报降雨色斑图
 @mcp.tool()
-def get_focast_raining_pictures(startTime: str, endTime: str) -> dict:
+def get_forecast_raining_pictures(startTime: str, endTime: str) -> dict:
     """
     获取预报降雨色斑图地址。
     参数：
@@ -108,9 +109,10 @@ def get_focast_raining_pictures(startTime: str, endTime: str) -> dict:
         result[key_date.strftime("%Y-%m-%d")] = f"http://10.163.25.156:8502/hsimg/img/1381/{pub_str}_{forecast_str}.png"
     return result
 
+
 # MCP工具11：获取小时级预报降雨色斑图
 @mcp.tool()
-def get_hourly_focast_raining_pictures(startTime: str, endTime: str) -> dict:
+def get_hourly_forecast_raining_pictures(startTime: str, endTime: str) -> dict:
     """
     获取小时级预报降雨色斑图地址。
     参数：
@@ -171,3 +173,4 @@ def get_hourly_focast_raining_pictures(startTime: str, endTime: str) -> dict:
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
+
