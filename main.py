@@ -6,53 +6,6 @@ import ast
 # Create an MCP server
 mcp = FastMCP("Demo")
 
-
-# MCP工具10：获取实测降雨色斑图
-@mcp.tool()
-def get_actual_raining_pictures(startTime: str, endTime: str) -> dict:
-    """
-    获取实测降雨色斑图地址。
-    参数：
-        startTime: 开始日期，格式为'YYYY-MM-DD'
-        endTime: 结束日期，格式为'YYYY-MM-DD'
-    返回：
-        字典，每一项key为日期字符串，value为实测降雨色斑图地址。
-    规则：
-        今天及之前的地址为http://10.163.25.156:8502/hsimg/img/1301/yyyymmdd090000.png
-    """
-    import re
-    from datetime import datetime, timedelta
-
-    def parse_date(date_str):
-        date_str = date_str.strip()
-        # 只支持 YYYY-MM-DD 格式
-        if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
-            raise ValueError(f"日期格式错误，请严格按照YYYY-MM-DD格式输入，如2025-07-15，当前输入: {date_str}")
-        return date_str
-
-    def daterange(start_date, end_date):
-        for n in range((end_date - start_date).days + 1):
-            yield start_date + timedelta(n)
-
-    today = datetime.today().date()
-    
-    # 解析开始和结束时间
-    start_date = datetime.strptime(parse_date(startTime), "%Y-%m-%d").date()
-    end_date = datetime.strptime(parse_date(endTime), "%Y-%m-%d").date()
-    
-    if start_date > end_date:
-        raise ValueError("开始日期不能晚于结束日期")
-
-    result = {}
-    for d in daterange(start_date, end_date):
-        date_str = d.strftime('%Y-%m-%d')
-        ymd = d.strftime('%Y%m%d')
-        if d <= today:
-            result[date_str] = f"http://10.163.25.156:8502/hsimg/img/1301/{ymd}090000.png"
-        
-    return result
-
-
 # MCP工具9：获取预报降雨色斑图
 @mcp.tool()
 def get_forecast_raining_pictures(startTime: str, endTime: str) -> dict:
@@ -110,6 +63,52 @@ def get_forecast_raining_pictures(startTime: str, endTime: str) -> dict:
     return result
 
 
+# MCP工具10：获取实测降雨色斑图
+@mcp.tool()
+def get_actual_raining_pictures(startTime: str, endTime: str) -> dict:
+    """
+    获取实测降雨色斑图地址。
+    参数：
+        startTime: 开始日期，格式为'YYYY-MM-DD'
+        endTime: 结束日期，格式为'YYYY-MM-DD'
+    返回：
+        字典，每一项key为日期字符串，value为实测降雨色斑图地址。
+    规则：
+        今天及之前的地址为http://10.163.25.156:8502/hsimg/img/1301/yyyymmdd090000.png
+    """
+    import re
+    from datetime import datetime, timedelta
+
+    def parse_date(date_str):
+        date_str = date_str.strip()
+        # 只支持 YYYY-MM-DD 格式
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+            raise ValueError(f"日期格式错误，请严格按照YYYY-MM-DD格式输入，如2025-07-15，当前输入: {date_str}")
+        return date_str
+
+    def daterange(start_date, end_date):
+        for n in range((end_date - start_date).days + 1):
+            yield start_date + timedelta(n)
+
+    today = datetime.today().date()
+    
+    # 解析开始和结束时间
+    start_date = datetime.strptime(parse_date(startTime), "%Y-%m-%d").date()
+    end_date = datetime.strptime(parse_date(endTime), "%Y-%m-%d").date()
+    
+    if start_date > end_date:
+        raise ValueError("开始日期不能晚于结束日期")
+
+    result = {}
+    for d in daterange(start_date, end_date):
+        date_str = d.strftime('%Y-%m-%d')
+        ymd = d.strftime('%Y%m%d')
+        if d <= today:
+            result[date_str] = f"http://10.163.25.156:8502/hsimg/img/1301/{ymd}090000.png"
+        
+    return result
+
+
 # MCP工具11：获取小时级预报降雨色斑图
 @mcp.tool()
 def get_hourly_forecast_raining_pictures(startTime: str, endTime: str) -> dict:
@@ -160,8 +159,11 @@ def get_hourly_forecast_raining_pictures(startTime: str, endTime: str) -> dict:
     for d in daterange(key_start, user_end):
         if d == publish_time:
             continue  # 跳过第一项
-        pub_str = publish_time.strftime("%Y%m%d%H%M%S")
-        forecast_str = d.strftime("%Y%m%d%H%M%S")
+        # 将分钟和秒数置为0
+        pub_datetime = publish_time.replace(minute=0, second=0)
+        forecast_datetime = d.replace(minute=0, second=0)
+        pub_str = pub_datetime.strftime("%Y%m%d%H%M%S")
+        forecast_str = forecast_datetime.strftime("%Y%m%d%H%M%S")
         # key值减一小时
         key_datetime = d - timedelta(hours=1)
         if user_start >= now:
