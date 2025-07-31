@@ -115,8 +115,8 @@ def get_hourly_forecast_pictures(startTime: str, endTime: str) -> dict:
     """
     获取小时级预报降雨色斑图地址。
     参数：
-        startTime: 开始日期，格式为'YYYY-MM-DD HH:MM:SS'
-        endTime: 结束日期，格式为'YYYY-MM-DD HH:MM:SS'
+        startTime: 开始时间，格式为'YYYY-MM-DD HH:MM:SS'
+        endTime: 结束时间，格式为'YYYY-MM-DD HH:MM:SS'
     返回：
         字典，每一项key为日期字符串，value为小时级预报降雨色斑图地址。
     规则：
@@ -170,6 +170,55 @@ def get_hourly_forecast_pictures(startTime: str, endTime: str) -> dict:
             # 如果用户输入的起始时间等于或晚于系统时间，key值的时间部分全部置为0
             key_datetime = key_datetime.replace(minute=0, second=0)
         result[key_datetime.strftime("%Y-%m-%d %H:%M:%S")] = f"http://10.163.25.156:8502/hsimg/img/1500/{pub_str}_{forecast_str}.png"
+    return result
+
+
+# MCP工具12：获取小时级实测降雨色斑图
+@mcp.tool()
+def get_hourly_actual_pictures(startTime: str, endTime: str) -> dict:
+    """
+    获取小时级实测降雨色斑图地址。
+    参数：
+        startTime: 开始时间，格式为'YYYY-MM-DD HH:MM:SS'
+        endTime: 结束时间，格式为'YYYY-MM-DD HH:MM:SS'
+    返回：
+        字典，每一项key为日期字符串，value为小时级实测降雨色斑图地址。
+    规则：
+        最终输出格式：http://10.163.25.156:9006/ddh/api/getMeteoSumToPNG?开始时间&结束时间
+    """
+    import re
+    from datetime import datetime, timedelta
+
+    def parse_datetime(datetime_str):
+        datetime_str = datetime_str.strip()
+        # 支持 YYYY-MM-DD HH:MM:SS 格式
+        if not re.match(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$', datetime_str):
+            raise ValueError(f"日期时间格式错误，请严格按照YYYY-MM-DD HH:MM:SS格式输入，如2025-07-15 08:00:00，当前输入: {datetime_str}")
+        return datetime_str
+
+    def daterange(start_datetime, end_datetime):
+        current = start_datetime
+        while current <= end_datetime:
+            yield current
+            current += timedelta(hours=1)
+
+    # 解析开始和结束时间
+    start_datetime = datetime.strptime(parse_datetime(startTime), "%Y-%m-%d %H:%M:%S")
+    end_datetime = datetime.strptime(parse_datetime(endTime), "%Y-%m-%d %H:%M:%S")
+
+    if start_datetime > end_datetime:
+        raise ValueError("开始时间不能晚于结束时间")
+
+    result = {}
+    for d in daterange(start_datetime, end_datetime):
+        # 格式化时间为API所需的格式
+        start_str = d.strftime("%Y-%m-%d %H:%M:%S")
+        end_str = (d + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 构建API URL
+        url = f"http://10.163.25.156:9006/ddh/api/getMeteoSumToPNG?startTime={start_str}&endTime={end_str}"
+        result[start_str] = url
+    
     return result
 
 
