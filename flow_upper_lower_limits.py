@@ -95,55 +95,56 @@ def gate_flow_upper_lower_limits(start_time: str, end_time: str, sites: list = N
     results = [get_mock_data(station) for station in sites]
 
     # 处理数据，提取上下限信息
-    station_up_data = []
-    station_down_data = []
+    station_data = {}
     for idx, station in enumerate(sites):
         try:
             data = results[idx]
             data_list = ast.literal_eval(data["data"]["文本呈现"])
             
             # 构建日期到上下限的映射
-            up_dict = {item["dataTime"][:10]: round(item["up"]) for item in data_list}
-            down_dict = {item["dataTime"][:10]: round(item["down"]) for item in data_list}
+            for item in data_list:
+                date = item["dataTime"][:10]  # 提取日期部分
+                if date not in station_data:
+                    station_data[date] = {}
+                station_data[date][f"{station}上限"] = round(item["up"])
+                station_data[date][f"{station}下限"] = round(item["down"])
             
-            # 计算平均值
-            up_avg = sum(up_dict.values()) / len(up_dict) if up_dict else None
-            down_avg = sum(down_dict.values()) / len(down_dict) if down_dict else None
-            
-        except Exception:
-            up_avg = None
-            down_avg = None
-            
-        station_up_data.append(up_avg)
-        station_down_data.append(down_avg)
+        except Exception as e:
+            print(f"处理{station}数据时出错: {e}")
+            continue
+
+    # 按日期排序
+    sorted_dates = sorted(station_data.keys())
+    
+    if not sorted_dates:
+        return "没有找到有效数据"
 
     # 生成markdown表格
-    headers = ["电站"] + sites
-    table = ["| " + " | ".join(headers) + " |", "|" + "|".join(["---"] * len(headers)) + "|"]
+    # 第一行：时间 + 各电站的上下限列
+    headers = ["时间"]
+    for station in sites:
+        headers.append(f"{station}上限m3/s")
+        headers.append(f"{station}下限m3/s")
     
-    # 下限行（Q5）
-    row_down = ["Q5下限(m³/s)"] + [str(round(down)) if down is not None else "N/A" for down in station_down_data]
+    table = ["| " + " | ".join(headers) + " |"]
+    table.append("|" + "|".join(["------"] * len(headers)) + "|")
     
-    # 上限行（Q95）
-    row_up = ["Q95上限(m³/s)"] + [str(round(up)) if up is not None else "N/A" for up in station_up_data]
+    # 数据行：按日期输出
+    for date in sorted_dates:
+        row = [date]
+        for station in sites:
+            up_key = f"{station}上限"
+            down_key = f"{station}下限"
+            row.append(str(station_data[date].get(up_key, "N/A")))
+            row.append(str(station_data[date].get(down_key, "N/A")))
+        table.append("| " + " | ".join(row) + " |")
     
-    table.append("| " + " | ".join(row_down) + " |")
-    table.append("| " + " | ".join(row_up) + " |")
     mark_str = "\n".join(table)
 
-    # 生成ECharts图表配置
-    title = f"{start_time}至{end_time}各电站入库流量上下限平均值"
-    echarts_str = generate_station_limits_option(
-        title,
-        sites,
-        [round(down) if down is not None else 0 for down in station_down_data],
-        [round(up) if up is not None else 0 for up in station_up_data],
-        y1_name="Q5下限(m³/s)",
-        y2_name="Q95上限(m³/s)"
-    )
-
-    r_str = "<text>### " + title + "\n\n" + mark_str + "</text>\n<display>" + json.dumps(echarts_str,
-                                                                                        ensure_ascii=False) + "</display>"
+    # 暂时去掉ECharts部分，只返回markdown表格
+    title = f"{start_time}至{end_time}各电站入库流量上下限"
+    # r_str = "<text>### " + title + "\n\n" + mark_str + "</text>"
+    r_str = "\n" + title + "\n\n" + mark_str + ""
     return r_str
 
 
@@ -257,7 +258,9 @@ def generate_station_limits_option(title: str, station_names: list, down_list: l
 
 
 if __name__ == "__main__":
-    result = asyncio.run(gate_flow_upper_lower_limits("2025-08-05", "2025-08-15", []))
+    # 测试调用函数
+    result = gate_flow_upper_lower_limits("2025-08-05", "2025-08-15", ['大岗山', '瀑布沟'])
+
     print(result)
 
 
