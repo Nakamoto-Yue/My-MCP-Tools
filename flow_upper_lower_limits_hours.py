@@ -6,7 +6,7 @@ import json
 default_stations = ["龚嘴", "大岗山", "瀑布沟", "猴子岩"]
 
 
-def gate_flow_upper_lower_limits(start_time: str, end_time: str, sites: list = None) -> str:
+def gate_flow_upper_lower_limits_hours(start_time: str, end_time: str, sites: list = None) -> str:
     """
     查询电站入库流量概率预报上下限，并以 Markdown 表格形式返回指定日期范围内的。
     功能：
@@ -16,13 +16,13 @@ def gate_flow_upper_lower_limits(start_time: str, end_time: str, sites: list = N
     参数：
     ---------
     start_time : str
-        查询的起始日期，格式为 "YYYY-MM-DD"。
+        查询的起始日期，格式为 "YYYY-MM-DD HH:MM:SS"。
 
     end_time : str
-        查询的结束日期，格式为 "YYYY-MM-DD"。
+        查询的结束日期，格式为 "YYYY-MM-DD HH:MM:SS"。
 
     sites : list
-        要查询的电站名称列表，如["电站1", "电站2"]。如果未提供，默认为查询所有电站（大渡河流域的四个电站）。
+        要查询的电站名称列表，如["电站1", "电站2"]。如果未提供，默认为查询大渡河流域的四个电站:"龚嘴", "大岗山", "瀑布沟", "猴子岩"。
 
     返回：
     --------
@@ -44,7 +44,7 @@ def gate_flow_upper_lower_limits(start_time: str, end_time: str, sites: list = N
         import os
         
         # 构建JSON文件路径
-        json_file_path = f"json_files/{station}日上下限.json"
+        json_file_path = f"json_files_hours/{station}小时上下限.json"
         
         try:
             # 检查文件是否存在
@@ -81,22 +81,23 @@ def gate_flow_upper_lower_limits(start_time: str, end_time: str, sites: list = N
             data = results[idx]
             data_list = ast.literal_eval(data["data"]["文本呈现"])
             
-            # 构建日期到上下限的映射
+            # 构建时间到上下限的映射
             for item in data_list:
-                date = item["dataTime"][:10]  # 提取日期部分
-                if date not in station_data:
-                    station_data[date] = {}
-                station_data[date][f"{station}上限"] = round(item["up"])
-                station_data[date][f"{station}下限"] = round(item["down"])
+                # 提取完整的时间字符串（精确到小时）
+                time_str = item["dataTime"][:13] + ":00:00"  # 确保格式为 YYYY-MM-DD HH:00:00
+                if time_str not in station_data:
+                    station_data[time_str] = {}
+                station_data[time_str][f"{station}上限"] = round(item["up"])
+                station_data[time_str][f"{station}下限"] = round(item["down"])
             
         except Exception as e:
             print(f"处理{station}数据时出错: {e}")
             continue
 
-    # 按日期排序
-    sorted_dates = sorted(station_data.keys())
+    # 按时间排序
+    sorted_times = sorted(station_data.keys())
     
-    if not sorted_dates:
+    if not sorted_times:
         return "没有找到有效数据"
 
     # 生成markdown表格
@@ -109,40 +110,41 @@ def gate_flow_upper_lower_limits(start_time: str, end_time: str, sites: list = N
     table = ["| " + " | ".join(headers) + " |"]
     table.append("|" + "|".join(["------"] * len(headers)) + "|")
     
-    # 数据行：按日期输出
-    for date in sorted_dates:
-        row = [date]
+    # 数据行：按时间输出
+    for time_str in sorted_times:
+        # 格式化时间显示，只显示到小时
+        display_time = time_str[:13] + ":00"
+        row = [display_time]
         for station in sites:
             up_key = f"{station}上限"
             down_key = f"{station}下限"
-            row.append(str(station_data[date].get(up_key, "N/A")))
-            row.append(str(station_data[date].get(down_key, "N/A")))
+            row.append(str(station_data[time_str].get(up_key, "N/A")))
+            row.append(str(station_data[time_str].get(down_key, "N/A")))
         table.append("| " + " | ".join(row) + " |")
     
     mark_str = "\n".join(table)
 
     # 生成ECharts图表配置
-    title = f"{start_time}至{end_time}各电站入库流量上下限"
-    echarts_str = generate_daily_limits_option(
+    title = f"{start_time}至{end_time}各电站入库流量上下限（小时级）"
+    echarts_str = generate_hourly_limits_option(
         title,
-        sorted_dates,
+        sorted_times,
         sites,
         station_data
     )
 
     # 返回包含markdown表格和ECharts图表的完整结果
-    # r_str = "\n" + title + "\n\n" + mark_str + "\n\n<display>" + json.dumps(echarts_str,ensure_ascii=False, indent=2) + "</display>"
     r_str = "\n" + title + "\n\n" + mark_str + "\n\n<display>"
     return r_str
 
 
-def generate_daily_limits_option(title: str, dates: list, stations: list, station_data: dict) -> dict:
+def generate_hourly_limits_option(title: str, times: list, stations: list, station_data: dict) -> dict:
     """
-    根据日期、电站和上下限数据，生成时间序列ECharts option。
+    根据时间、电站和上下限数据，生成时间序列ECharts option。
     :param title: 图表标题
-    :param dates: 日期列表
+    :param times: 时间列表
     :param stations: 电站列表
-    :param station_data: 按日期和电站存储的数据
+    :param station_data: 按时间和电站存储的数据
     :return: ECharts option 字典
     """
     series = []
@@ -154,9 +156,9 @@ def generate_daily_limits_option(title: str, dates: list, stations: list, statio
         
         # 上限数据系列
         up_data = []
-        for date in dates:
+        for time_str in times:
             up_key = f"{station}上限"
-            value = station_data[date].get(up_key, 0)
+            value = station_data[time_str].get(up_key, 0)
             up_data.append(value)
         
         series.append({
@@ -171,9 +173,9 @@ def generate_daily_limits_option(title: str, dates: list, stations: list, statio
         
         # 下限数据系列
         down_data = []
-        for date in dates:
+        for time_str in times:
             down_key = f"{station}下限"
-            value = station_data[date].get(down_key, 0)
+            value = station_data[time_str].get(down_key, 0)
             down_data.append(value)
         
         series.append({
@@ -185,6 +187,9 @@ def generate_daily_limits_option(title: str, dates: list, stations: list, statio
             "symbol": "circle",
             "symbolSize": 6
         })
+    
+    # 格式化时间轴标签，只显示小时
+    formatted_times = [time_str[:13] + ":00" for time_str in times]
     
     return {
         "title": {
@@ -222,7 +227,7 @@ def generate_daily_limits_option(title: str, dates: list, stations: list, statio
         },
         "xAxis": {
             "type": "category",
-            "data": dates,
+            "data": formatted_times,
             "axisTick": {
                 "show": False
             },
@@ -256,7 +261,7 @@ def generate_daily_limits_option(title: str, dates: list, stations: list, statio
 
 if __name__ == "__main__":
     # 测试调用函数
-    result = gate_flow_upper_lower_limits("2025-08-05", "2025-08-15", [])
+    result = gate_flow_upper_lower_limits_hours("2025-08-07 09:00:00", "2025-08-07 18:00:00", [])
 
     print(result)
 
