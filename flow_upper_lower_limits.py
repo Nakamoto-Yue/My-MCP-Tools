@@ -141,11 +141,137 @@ def gate_flow_upper_lower_limits(start_time: str, end_time: str, sites: list = N
     
     mark_str = "\n".join(table)
 
-    # 暂时去掉ECharts部分，只返回markdown表格
+    # 生成ECharts图表配置
     title = f"{start_time}至{end_time}各电站入库流量上下限"
-    # r_str = "<text>### " + title + "\n\n" + mark_str + "</text>"
-    r_str = "\n" + title + "\n\n" + mark_str + ""
+    echarts_str = generate_daily_limits_option(
+        title,
+        sorted_dates,
+        sites,
+        station_data
+    )
+
+    # 返回包含markdown表格和ECharts图表的完整结果
+    r_str = "\n" + title + "\n\n" + mark_str + "\n\n<display>" + json.dumps(echarts_str,
+                                                                                        ensure_ascii=False, indent=2) + "</display>"
     return r_str
+
+
+def generate_daily_limits_option(title: str, dates: list, stations: list, station_data: dict) -> dict:
+    """
+    根据日期、电站和上下限数据，生成时间序列ECharts option。
+    :param title: 图表标题
+    :param dates: 日期列表
+    :param stations: 电站列表
+    :param station_data: 按日期和电站存储的数据
+    :return: ECharts option 字典
+    """
+    series = []
+    colors = ['#FF4D4F', '#52C41A', '#1890FF', '#FAAD14', '#722ED1', '#13C2C2', '#EB2F96', '#F5222D']
+    
+    # 为每个电站生成上下限数据系列
+    for i, station in enumerate(stations):
+        color_index = i % len(colors)
+        
+        # 上限数据系列
+        up_data = []
+        for date in dates:
+            up_key = f"{station}上限"
+            value = station_data[date].get(up_key, 0)
+            up_data.append(value)
+        
+        series.append({
+            "name": f"{station}上限",
+            "type": "line",
+            "data": up_data,
+            "itemStyle": {"color": colors[color_index]},
+            "lineStyle": {"color": colors[color_index], "width": 2},
+            "symbol": "circle",
+            "symbolSize": 6
+        })
+        
+        # 下限数据系列
+        down_data = []
+        for date in dates:
+            down_key = f"{station}下限"
+            value = station_data[date].get(down_key, 0)
+            down_data.append(value)
+        
+        series.append({
+            "name": f"{station}下限",
+            "type": "line",
+            "data": down_data,
+            "itemStyle": {"color": colors[color_index]},
+            "lineStyle": {"color": colors[color_index], "width": 2, "type": "dashed"},
+            "symbol": "circle",
+            "symbolSize": 6
+        })
+    
+    return {
+        "title": {
+            "text": title,
+            "left": 14,
+        },
+        "tooltip": {
+            "trigger": "axis",
+            "axisPointer": {
+                "type": "cross"
+            }
+        },
+        "legend": {
+            "data": [f"{station}上限" for station in stations] + [f"{station}下限" for station in stations],
+            "icon": "roundRect",
+            "top": 50,
+            "itemWidth": 12,
+            "itemHeight": 8,
+            "itemGap": 16,
+            "textStyle": {
+                "rich": {
+                    "a": {
+                        "verticalAlign": "middle"
+                    }
+                },
+                "padding": [3, 0, 0, 0]
+            }
+        },
+        "grid": {
+            "top": 80,
+            "bottom": 20,
+            "left": 20,
+            "right": 20,
+            "containLabel": True
+        },
+        "xAxis": {
+            "type": "category",
+            "data": dates,
+            "axisTick": {
+                "show": False
+            },
+            "axisLabel": {
+                "textStyle": {
+                    "color": "#86909C"
+                },
+                "rotate": 45
+            },
+            "axisLine": {
+                "lineStyle": {
+                    "color": "#c9cdd4"
+                }
+            }
+        },
+        "yAxis": {
+            "type": "value",
+            "name": "流量(m³/s)",
+            "nameTextStyle": {
+                "padding": [0, 0, 0, 0]
+            },
+            "splitLine": {
+                "lineStyle": {
+                    "type": "dashed"
+                }
+            }
+        },
+        "series": series
+    }
 
 
 def generate_station_limits_option(title: str, station_names: list, down_list: list, up_list: list,
@@ -259,7 +385,7 @@ def generate_station_limits_option(title: str, station_names: list, down_list: l
 
 if __name__ == "__main__":
     # 测试调用函数
-    result = gate_flow_upper_lower_limits("2025-08-05", "2025-08-15", ['大岗山', '瀑布沟'])
+    result = gate_flow_upper_lower_limits("2025-08-05", "2025-08-15", [])
 
     print(result)
 
