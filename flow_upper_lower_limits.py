@@ -151,8 +151,8 @@ def gate_flow_upper_lower_limits(start_time: str, end_time: str, sites: list = N
     )
 
     # 返回包含markdown表格和ECharts图表的完整结果
-    r_str = "\n" + title + "\n\n" + mark_str + "\n\n<display>" + json.dumps(echarts_str,
-                                                                                        ensure_ascii=False, indent=2) + "</display>"
+    # r_str = "\n" + title + "\n\n" + mark_str + "\n\n<display>" + json.dumps(echarts_str,ensure_ascii=False, indent=2) + "</display>"
+    r_str = "\n" + title + "\n\n" + mark_str + "\n\n<display>"
     return r_str
 
 
@@ -271,115 +271,6 @@ def generate_daily_limits_option(title: str, dates: list, stations: list, statio
             }
         },
         "series": series
-    }
-
-
-def generate_station_limits_option(title: str, station_names: list, down_list: list, up_list: list,
-                                 y1_name: str = "Q5下限(m³/s)", y2_name: str = "Q95上限(m³/s)") -> dict:
-    """
-    根据输入的标题、电站名列表、下限和上限列表，动态生成双y轴ECharts option。
-    :param title: 图表标题
-    :param station_names: 电站名称列表(X轴)
-    :param down_list: 各电站下限(Y轴1)
-    :param up_list: 各电站上限(Y轴2)
-    :param y1_name: Y轴1名称和图例名称
-    :param y2_name: Y轴2名称和图例名称
-    :return: ECharts option 字典
-    """
-    return {
-        "title": {
-            "text": title,
-            "left": 14,
-        },
-        "tooltip": {
-            "trigger": 'axis'
-        },
-        "legend": {
-            "data": [y1_name, y2_name],
-            "icon": 'roundRect',
-            "top": 50,
-            "itemWidth": 12,
-            "itemHeight": 8,
-            "itemGap": 16,
-            "textStyle": {
-                "rich": {
-                    "a": {
-                        "verticalAlign": 'middle'
-                    }
-                },
-                "padding": [3, 0, 0, 0]
-            }
-        },
-        "grid": {
-            "top": 80,
-            "bottom": 20,
-            "left": 20,
-            "right": 20,
-            "containLabel": True
-        },
-        "xAxis": {
-            "type": 'category',
-            "data": station_names,
-            "axisTick": {
-                "show": False
-            },
-            "axisLabel": {
-                "textStyle": {
-                    "color": '#86909C'
-                }
-            },
-            "axisLine": {
-                "lineStyle": {
-                    "color": '#c9cdd4'
-                }
-            }
-        },
-        "yAxis": [
-            {
-                "type": 'value',
-                "name": y1_name,
-                "nameTextStyle": {
-                    "padding": [0, -20, 0, 0]
-                },
-                "splitLine": {
-                    "lineStyle": {
-                        "type": 'dashed'
-                    }
-                }
-            },
-            {
-                "type": 'value',
-                "name": y2_name,
-                "nameTextStyle": {
-                    "padding": [0, 0, 0, 0]
-                },
-                "splitLine": {
-                    "show": False
-                }
-            }
-        ],
-        "series": [
-            {
-                "name": y1_name,
-                "type": 'bar',
-                "data": down_list,
-                "itemStyle": {
-                    "color": '#52C41A'
-                },
-                "barGap": 0,
-                "yAxisIndex": 0
-            },
-            {
-                "name": y2_name,
-                "type": 'bar',
-                "data": up_list,
-                "itemStyle": {
-                    "color": '#FF4D4F'
-                },
-                "barGap": 0,
-                "yAxisIndex": 1
-            }
-        ]
     }
 
 
