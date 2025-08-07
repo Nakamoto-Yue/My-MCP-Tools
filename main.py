@@ -169,7 +169,7 @@ def get_hourly_forecast_pictures(startTime: str, endTime: str) -> dict:
         if user_start >= now:
             # 如果用户输入的起始时间等于或晚于系统时间，key值的时间部分全部置为0
             key_datetime = key_datetime.replace(minute=0, second=0)
-        result[key_datetime.strftime("%Y-%m-%d %H:%M:%S")] = f"http://10.163.25.156:8502/hsimg/img/1500/{pub_str}_{forecast_str}.png"
+        result[key_datetime.strftime("%Y-%m-%d %H:%M:%S")] = f"http://10.163.25.156:8502/hsimg_hour/img/1500/{pub_str}_{forecast_str}.png"
     return result
 
 
@@ -182,11 +182,13 @@ def get_hourly_actual_pictures(startTime: str, endTime: str) -> dict:
         startTime: 开始时间，格式为'YYYY-MM-DD HH:MM:SS'
         endTime: 结束时间，格式为'YYYY-MM-DD HH:MM:SS'
     返回：
-        字典，每一项key为日期字符串，value为小时级实测降雨色斑图地址。
+        字典，包含一项，key为"开始时间+结束时间"，value为小时级实测降雨色斑图地址。
     规则：
         最终输出格式：http://10.163.25.156:9006/ddh/api/getMeteoSumToPNG?开始时间&结束时间
     """
     import re
+    import requests
+    import json
     from datetime import datetime, timedelta
 
     def parse_datetime(datetime_str):
@@ -196,12 +198,6 @@ def get_hourly_actual_pictures(startTime: str, endTime: str) -> dict:
             raise ValueError(f"日期时间格式错误，请严格按照YYYY-MM-DD HH:MM:SS格式输入，如2025-07-15 08:00:00，当前输入: {datetime_str}")
         return datetime_str
 
-    def daterange(start_datetime, end_datetime):
-        current = start_datetime
-        while current <= end_datetime:
-            yield current
-            current += timedelta(hours=1)
-
     # 解析开始和结束时间
     start_datetime = datetime.strptime(parse_datetime(startTime), "%Y-%m-%d %H:%M:%S")
     end_datetime = datetime.strptime(parse_datetime(endTime), "%Y-%m-%d %H:%M:%S")
@@ -209,18 +205,35 @@ def get_hourly_actual_pictures(startTime: str, endTime: str) -> dict:
     if start_datetime > end_datetime:
         raise ValueError("开始时间不能晚于结束时间")
 
-    result = {}
-    for d in daterange(start_datetime, end_datetime):
-        # 格式化时间为API所需的格式
-        start_str = d.strftime("%Y-%m-%d %H:%M:%S")
-        end_str = (d + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
-        
-        # 构建API URL
-        url = f"http://10.163.25.156:9006/ddh/api/getMeteoSumToPNG?startTime={start_str}&endTime={end_str}"
-        result[start_str] = url
+    # 构建key：开始时间_结束时间
+    key = f"{startTime}____{endTime}"
     
+    # 构建API URL
+    url = f"http://10.163.25.156:9006/ddh/api/getMeteoSumToPNG?startTime={startTime}&endTime={endTime}"
+    
+    try:
+        # 发送HTTP请求
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()  # 检查HTTP错误
+        
+        # 解析JSON响应
+        response_data = response.json()
+        
+        # 获取data字段的值
+        if 'data' in response_data:
+            data_value = response_data['data']
+        else:
+            raise ValueError("响应中没有找到'data'字段")
+            
+    except requests.exceptions.RequestException as e:
+        raise ValueError(f"HTTP请求失败: {str(e)}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON解析失败: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"请求处理失败: {str(e)}")
+    
+    result = {key: data_value}
     return result
-
 
 
 if __name__ == "__main__":
